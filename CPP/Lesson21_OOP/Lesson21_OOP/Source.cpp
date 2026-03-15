@@ -127,7 +127,7 @@ public:
 		target->setHealth(target->getMaxHealth() * 0.15f);
 		mana -= 10;
 
-		cout << target->getName() << " has been revived by " << getName() << "!" << endl;
+		cout << target->getName() << " has been revived by " << getName() << "" << endl;
 	}
 	
 	float getMana() {
