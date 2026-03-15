@@ -19,10 +19,11 @@ public:
 	{
 		this->name = name;
 		this->health = health;
+		this->max_health = health;
 		UpdateIsDead();
 	}
 
-	void getinfo()
+	void getInfo()
 	{
 		cout << "Name: " << name << "; Health: " << health << "/" << max_health << ";\n";
 	}
@@ -48,6 +49,10 @@ public:
 	string getName() {
 		return name;
 	}
+	float getMaxHealth()
+	{
+		return max_health;
+	}
 };
 
 
@@ -67,9 +72,9 @@ public:
 		this->strength = strength;
 
 	}
-	void getinfo()
+	void getInfo()
 	{
-		cout << "Name: " << getName() << "; Health: " << getHealth() << "; Strength: " << getDamage() << ";\n";
+		cout << "Name: " << getName() << "; Health: " << getHealth() << "; Strength: " << getDamage() << "; Class: Warrior" << endl;
 	}
 };
 
@@ -91,9 +96,9 @@ public:
 	float getMana() {
 		return mana;
 	}
-	void getinfo()
+	void getInfo()
 	{
-		cout << "Name: " << getName() << "; Health: " << getHealth() << "; Mana: " << getMana() << ";\n";
+		cout << "Name: " << getName() << "; Health: " << getHealth() << "; Mana: " << getMana() << "; Class: Zealot" << endl;
 	}
 	zealot(string name, float health, float mana) : character(name, health) {
 		this->mana = mana;
@@ -101,29 +106,113 @@ public:
 };
 
 
+class necromancer :public character
+{
+	float mana;
+public:
+	void revive(character* target)
+	{
+		if (target->getHealth() > 0)
+		{
+			cout << "Revive target is not dead!" << endl;
+			return;
+		}
+
+		if (mana < 10)
+		{
+			cout << "Not enough mana!" << endl;
+			return;
+		}
+
+		target->setHealth(target->getMaxHealth() * 0.15f);
+		mana -= 10;
+
+		cout << target->getName() << " has been revived by " << getName() << "!" << endl;
+	}
+	
+	float getMana() {
+		return mana;
+	}
+
+	void getInfo()
+	{
+		cout << "Name: " << getName() << "; Health: " << getHealth() << "; Mana: " << getMana() << "; Class: Necromancer" << endl;
+	}
+
+	necromancer(string name, float health, float mana) : character(name, health)
+	{
+		this->mana = mana;
+	}
+};
+
+
+class thief : public warrior
+{
+public:
+	thief(string name, float health, float strength) : warrior(name, health, strength) {}
+	
+	void lifeSteal(character* target)
+	{
+		float damage = getDamage() * 0.5f;
+		float oldHealth = target->getHealth();
+		target->damage(damage);
+		float realDamage = oldHealth - target->getHealth();
+		heal(realDamage);
+		cout << getName() << " stole " << realDamage << " HP from " << target->getName() << "!" << endl;
+	}
+
+	void getInfo()
+	{
+		cout << "Name: " << getName() << "; Health: " << getHealth() << "; Strength: " << getDamage() << "; Class: Thief" << endl;
+	}
+};
+
 
 int main()
 {
-	warrior w1("uno", 100, 150);
-	warrior w2("dos", 100, 30);
-	zealot zealot1("tres", 100, 10);
-	w1.getinfo();
-	cout << endl;
-	w2.getinfo();
-	cout << "--------------------" << endl;
-	w1.attack(&w2);
-	w2.attack(&w1);
-	w1.getinfo();
-	cout << endl;
-	w2.getinfo();
-	cout << "--------------------" << endl;
-	zealot1.getinfo();
-	zealot1.heal(&w1, 5);
-	cout << endl;
-	w1.getinfo();
-	cout << "--------------------" << endl;
-	zealot1.getinfo();
+	warrior w1("Warrior1", 100, 60);
+	warrior w2("Warrior2", 100, 50);
+	zealot zealot("Zealot", 80, 20);
+	necromancer necro("Necro", 70, 40);
+	thief thief("Thief", 90, 30);
 
+	cout << "Game initial state: " << endl;
+	w1.getInfo();
+	w2.getInfo();
+	zealot.getInfo();
+	necro.getInfo();
+	thief.getInfo();
+	cout << "------------------------------" << endl;
+
+	w1.attack(&w2);
+	cout << w1.getName() << " attacked " << w2.getName() << "!" << endl;
+	w2.getInfo();
+	cout << "------------------------------" << endl;
+
+	w2.attack(&w1);
+	cout << w2.getName() << " attacked " << w1.getName() << "!" << endl;
+	w1.getInfo();
+	cout << "------------------------------" << endl;
+	
+	zealot.heal(&w1, 10);
+	cout << zealot.getName() << " healed " << w1.getName() << " by 10 HP!" << endl;
+	w1.getInfo();
+	zealot.getInfo();
+	cout << "------------------------------" << endl;
+
+	thief.lifeSteal(&w1);
+	thief.getInfo();
+	w1.getInfo();
+	cout << "------------------------------" << endl;
+
+	cout << w1.getName() << " attacked " << w2.getName() << "!" << endl;
+	w1.attack(&w2);
+	cout << "------------------------------" << endl;
+
+	necro.revive(&w2);
+	w2.getInfo();
+	necro.getInfo();
+	cout << "------------------------------" << endl;
 
 	return 0;
 }
