@@ -82,6 +82,8 @@ public:
 
 class zealot :public character
 {
+
+protected:
 	float mana;
 public:
 	void heal(character* target, float heal)
@@ -106,10 +108,12 @@ public:
 };
 
 
-class necromancer :public character
+class necromancer : public zealot
 {
-	float mana;
+	
 public:
+	necromancer(string name, float health, float mana) : zealot(name, health, mana) {}
+
 	void revive(character* target)
 	{
 		if (target->getHealth() > 0)
@@ -129,19 +133,10 @@ public:
 
 		cout << target->getName() << " has been revived by " << getName() << "!" << endl;
 	}
-	
-	float getMana() {
-		return mana;
-	}
 
 	void getInfo()
 	{
 		cout << "Name: " << getName() << "; Health: " << getHealth() << "; Mana: " << getMana() << "; Class: Necromancer" << endl;
-	}
-
-	necromancer(string name, float health, float mana) : character(name, health)
-	{
-		this->mana = mana;
 	}
 };
 
