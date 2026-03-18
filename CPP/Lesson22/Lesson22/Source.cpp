@@ -20,24 +20,31 @@ public:
     String()
     {
         length = 0;
-        ptr = new char('\0');
+        ptr = new char[1];
+        ptr[0] = '\0';
     }
 
     String(const String& string)
     {
         length = 0;
+        ptr = new char[1];
+        ptr[0] = '\0';
         Append(string.GetData());
     }
 
     String(const char* ptr)
     {
         length = 0;
+        this->ptr = new char[1];
+        this->ptr[0] = '\0';
         Append(ptr);
     }
 
     String(const char* ptr, const int length)
     {
         this->length = 0;
+        this->ptr = new char[1];
+        this->ptr[0] = '\0';
         Append(ptr, length);
     }
 
@@ -86,6 +93,36 @@ public:
         delete[] this->ptr;
         this->ptr = new_ptr;
         this->length = new_length;
+    }
+
+    bool Contains(const char* substring) const
+    {
+        int sub_length = 0;
+        
+        while (substring[sub_length] != '\0')
+        {
+            sub_length++;
+        }
+
+        for (int i = 0; i <= length - sub_length; i++)
+        {
+            bool match = true;
+
+            for (int j = 0; j < sub_length; j++)
+            {
+                if (ptr[i + j] != substring[j])
+                {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     void Remove(const char* old_substring, const char* new_substring)
@@ -159,7 +196,7 @@ int main()
     string1.Remove("TEXT", "text123");
     string1.Print(); // Test text123 Asd TEXT Asd
 
-    // Треба: Test text123 Asd text123 Asd
+    
 
     return 0;
 }
