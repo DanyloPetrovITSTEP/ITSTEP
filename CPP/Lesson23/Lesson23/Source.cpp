@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 using namespace std;
 
 class Item
@@ -14,61 +15,73 @@ public:
 	}
 };
 
+class ItemSlot
+{
+public:
+	Item* item;
+	int quantity;
+
+	ItemSlot() : item(nullptr), quantity(0) {}
+};
+
 class Inventory
 {
-	struct ItemStack
-	{
-		Item* item;
-		int quantity;
-	};
-
-	static const int maxSlots = 20;
-	ItemStack items[maxSlots];
-	int count = 0;
+	int maxSlots;
+	ItemSlot* slots;
 
 public:
+
+	Inventory(int size = 20)
+	{
+		maxSlots = size;
+		slots = new ItemSlot[maxSlots];
+	}
+
+	~Inventory()
+	{
+		delete[] slots;
+	}
 
 	bool addItem(Item* item, int quantity = 1)
 	{
 
-		for (int i = 0; i < count; i++)
+		for (int i = 0; i < maxSlots; i++)
 		{
-			if (items[i].item->getName() == item->getName())
+			if (slots[i].item != nullptr && slots[i].item->getName() == item->getName())
 			{
-				items[i].quantity += quantity;
+				slots[i].quantity += quantity;
 				return true;
 			}
 		}
 
-		if (count < maxSlots)
+		for (int i = 0; i < maxSlots; i++)
 		{
-			items[count].item = item;
-			items[count].quantity = quantity;
-			count++;
-			return true;
+			if (slots[i].item == nullptr)
+			{
+				slots[i].item = item;
+				slots[i].quantity = quantity;
+
+				return true;
+			}
 		}
-		else
-		{
-			cout << "Inventory is full!" << endl;
-			return false;
-		}
+
+		cout << "Inventory is full!" << endl;
+		return false;
 	}
 
-	bool dropItem(const string& name)
+	bool dropItem(const string& name, Item*& droppedItem, int quantity = 1)
 	{
-		for (int i = 0; i < count; i++)
+		for (int i = 0; i < maxSlots; i++)
 		{
-			if (items[i].item->getName() == name)
+			if (slots[i].item != nullptr && slots[i].item->getName() == name)
 			{
-				items[i].quantity--;
+				slots[i].quantity -= quantity;
+				droppedItem = slots[i].item;
 
-				if (items[i].quantity <= 0)
+				if (slots[i].quantity <= 0)
 				{
-					for (int j = i; j < count - 1; j++)
-					{
-						items[j] = items[j + 1];
-					}
-					count--;
+					slots[i].item = nullptr;
+					slots[i].quantity = 0;
 				}
 				return true;
 			}
@@ -78,167 +91,175 @@ public:
 
 	void showInventory()
 	{
-		cout << "Inventory:" << endl;
-		for (int i = 0; i < count; i++)
+		for (int i = 0; i < maxSlots; i++)
 		{
-			cout << "* " << items[i].item->getName() << " x" << items[i].quantity << endl;
-		}
-	}
-
-	bool isHasItem(const string& name)
-	{
-		for (int i = 0; i < count; i++)
-		{
-			if (items[i].item->getName() == name)
+			if (slots[i].item != nullptr)
 			{
-				return true;
+				cout << "* " << slots[i].item->getName() << " x" << slots[i].quantity << endl;
 			}
 		}
-		return false;
-	}
-
-	Item* getItemPointer(const string& name)
-	{
-		for (int i = 0; i < count; i++)
-		{
-			if (items[i].item->getName() == name)
-			{
-				return items[i].item;
-			}
-		}
-
-		return nullptr;
 	}
 };
 
-class droppedItem
+class Actor
+{
+protected:
+	string name;
+	static int counter;
+
+public:
+	Actor()
+	{
+		counter++;
+		name = "Actor" + to_string(counter); // ³äåÿ - ìîÿ, ðåàë³çàö³ÿ - ÃåÏåÒå
+	}
+	Actor(string name) : name(name) {}
+
+	string getName()
+	{
+		return name;
+	}
+};
+int Actor::counter = 0;
+
+class DroppedItem : public Actor
 {
 public:
 	Item* item;
 	int quantity;
 
-	droppedItem() : item(nullptr), quantity(0) {}
-	droppedItem(Item* item, int quantity) : item(item), quantity(quantity) {}
+	DroppedItem() : item(nullptr), quantity(0) {}
+	DroppedItem(Item* item, int quantity, string name = "DroppedItem") : Actor(name)
+	{
+		this->item = item;
+		this->quantity = quantity;
+	}
 };
 
 class Scene
 {
-	droppedItem* droppedItems = nullptr;
-	int droppedCount = 0;
-	int arraySize;
+	DroppedItem* DroppedItems;
+	int DroppedCount = 0;
+	int SIZE;
 	
 public:
 
+	Scene()
+	{
+		SIZE = 10;
+		DroppedCount = 0;
+		DroppedItems = new DroppedItem[SIZE];
+	}
+
 	~Scene()
 	{
-		delete[] droppedItems;
+		delete[] DroppedItems;
 	}
 
-	void addDroppedItem(Item* item, int quantity = 1)
+	void addDroppedItem(Item* item, int quantity)
 	{
-		if (droppedCount >= arraySize)
+		if (DroppedCount >= SIZE)
 		{
-			int newArraySize = (arraySize == 0) ? 20 : arraySize * 2;
-			droppedItem* newArray = new droppedItem[newArraySize];
+			SIZE *= 2;
+			DroppedItem* newArr = new DroppedItem[SIZE];
 
-			for (int i = 0; i < droppedCount; i++)
+			for (int i = 0; i < DroppedCount; i++)
 			{
-				newArray[i] = droppedItems[i];
+				newArr[i] = DroppedItems[i];
 			}
 
-			delete[] droppedItems;
-			droppedItems = newArray;
-			arraySize = newArraySize;
+			delete[] DroppedItems;
+			DroppedItems = newArr;
 		}
 
-		droppedItems[droppedCount++] = droppedItem(item, quantity);
+		DroppedItems[DroppedCount++] = DroppedItem(item, quantity);
 	}
 
-	bool pickUpItem(const string& name, Inventory& invent)
+	bool pickUpItem(const string& name, Item*& item, int& quantity)
 	{
-		for (int i = 0; i < droppedCount; i++)
+		for (int i = 0; i < DroppedCount; i++)
 		{
-			if (droppedItems[i].item->getName() == name)
+			if (DroppedItems[i].item->getName() == name)
 			{
-				if (invent.addItem(droppedItems[i].item, droppedItems[i].quantity))
+				item = DroppedItems[i].item;
+				quantity = DroppedItems[i].quantity;
+
+				for (int j = i; j < DroppedCount - 1; j++)
 				{
-					for (int j = i; j < droppedCount - 1; j++)
-					{
-						droppedItems[j] = droppedItems[j + 1];
-					}
-					droppedCount--;
-					return true;
+					DroppedItems[j] = DroppedItems[j + 1];
 				}
-				else
-				{
-					return false;
-				}
+
+				DroppedCount--;
+				return true;
 			}
 		}
 		cout << "There is no such item on the ground!" << endl;
 		return false;
 	}
 
-	void getDroppedItems()
+	void showDroppedItems()
 	{
-		if (droppedCount == 0)
+		if (DroppedCount == 0)
 		{
-			cout << "There is nothing on the ground" << endl;
+			cout << "There's nothing on the ground!" << endl;
+			return;
 		}
-		else
+
+		cout << "Items on the ground: " << endl;
+		for (int i = 0; i < DroppedCount; i++)
 		{
-			cout << "Items on the ground:" << endl;
-			for (int i = 0; i < droppedCount; i++)
-			{
-				cout << "* " << droppedItems[i].item->getName() << " x" << droppedItems[i].quantity << endl;
-			}
+			cout << "* " << DroppedItems[i].item->getName() << " x" << DroppedItems[i].quantity << endl;
 		}
 	}
 };
 
-class Character
+class Character : public Actor
 {
-	string name;
-	float health;
 	Inventory inventory;
-	Scene* scene = nullptr;
+	Scene* scene;
 
 public:
-	Character(string name, float health, Scene* scene = nullptr) : name(name), health(health), scene(scene) {}
-
-	Inventory& getInventory()
+	Character(string name, Scene* scene) : Actor(name)
 	{
-		return inventory;
+		this->scene = scene;
 	}
 
-	void dropItem(const string& name)
+	void showInventory()
 	{
-		if (inventory.dropItem(name))
+		cout << name << "'s inventory: " << endl;
+		inventory.showInventory();
+	}
+
+	void dropItem(const string& name, int quantity = 1)
+	{
+		Item* item;
+
+		if (inventory.dropItem(name, item, quantity))
 		{
-			Item* itemPtr = inventory.getItemPointer(name);
-			if (scene && itemPtr)
-			{
-				scene->addDroppedItem(itemPtr, 1);
-			}
+			scene->addDroppedItem(item, quantity);
+			cout << "Dropped " << name << " x" << quantity << endl;
 		}
 		else
 		{
-			cout << this->name << " dont have " << name << " to drop!" << endl;
+			cout << "No such item to drop!" << endl;
 		}
 	}
 	
 	void pickUpItem(const string& name)
 	{
-		if (scene &&scene->pickUpItem(name, inventory))
+		Item* item;
+		int quantity;
+
+		if (scene->pickUpItem(name, item, quantity))
 		{
-			cout << name << " picked up" << endl;
+			inventory.addItem(item, quantity);
+			cout << "Picked up " << name << " x" << quantity << endl;
 		}
 	}
 
-	void getInfo()
+	Inventory& getInventory()
 	{
-		cout << name << " | " << health << " HP" << endl;
-		inventory.showInventory();
+		return inventory;
 	}
 };
 
@@ -250,21 +271,27 @@ int main()
 	Item axe("Vibranium Battle Axe");
 	Item food("Mivina");
 
-	Character FallenGod("Fallen God", 200, &scene);
+	Character FallenGod("Fallen God", &scene);
 
 	FallenGod.getInventory().addItem(&sword);
 	FallenGod.getInventory().addItem(&axe);
 	FallenGod.getInventory().addItem(&food, 5);
 
-	FallenGod.getInfo();
+	FallenGod.showInventory();
+	cout << endl;
 
 	FallenGod.dropItem("Steel Sword");
-	FallenGod.getInfo();
-	scene.getDroppedItems();
+	cout << endl;
+	FallenGod.showInventory();
+	cout << endl;
+	scene.showDroppedItems();
+	cout << endl;
 
 	FallenGod.pickUpItem("Steel Sword");
-	FallenGod.getInfo();
-	scene.getDroppedItems();
+	cout << endl;
+	FallenGod.showInventory();
+	cout << endl;
+	scene.showDroppedItems();
 
 	return 0;
 }
