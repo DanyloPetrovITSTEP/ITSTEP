@@ -110,11 +110,11 @@ protected:
 public:
 	Actor(string type = "Actor", string name = "Actor") : type(type), name(name) {}
 	
-	string getType()
+	string getType() const
 	{
 		return type;
 	}
-	string getName()
+	string getName() const
 	{
 		return name;
 	}
@@ -123,14 +123,24 @@ public:
 
 class DroppedItem : public Actor
 {
-public:
 	Item* item;
 	int quantity;
-
+	
+public:
 	DroppedItem(Item* item, int quantity) : Actor("DroppedItem", "DroppedItem")
 	{
 		this->item = item;
 		this->quantity = quantity;
+	}
+
+	Item* getItem() const
+	{
+		return item;
+	}
+
+	int getQuantity() const
+	{
+		return quantity;
 	}
 };
 
@@ -151,6 +161,11 @@ public:
 
 	~Scene()
 	{
+		for (int i = 0; i < count; i++)
+		{
+			delete actors[i];
+		}
+
 		delete[] actors;
 	}
 
@@ -174,6 +189,8 @@ public:
 
 	void RemoveActor(int index)
 	{
+		delete actors[index];
+
 		for (int i = index; i < count - 1; i++)
 		{
 			actors[i] = actors[i + 1];
@@ -198,7 +215,7 @@ class Character : public Actor
 	Scene* scene;
 
 public:
-	Character(string name, Scene* scene) : Actor(name)
+	Character(string name, Scene* scene) : Actor("Character", name)
 	{
 		this->scene = scene;
 	}
@@ -235,13 +252,13 @@ public:
 			{
 				DroppedItem* dropped = (DroppedItem*)actors[i];
 
-				if (dropped->item->getName() == name)
+				if (dropped->getItem()->getName() == name)
 				{
-					inventory.addItem(dropped->item, dropped->quantity);
+					inventory.addItem(dropped->getItem(), dropped->getQuantity());
 
 					scene->RemoveActor(i);
 
-					cout << "Picked up " << name << " x" << dropped->quantity << endl;
+					cout << "Picked up " << name << " x" << dropped->getQuantity() << endl;
 					return;
 				}
 			}
@@ -276,14 +293,11 @@ int main()
 	cout << endl;
 	FallenGod.showInventory();
 	cout << endl;
-	scene.getActors();
-	cout << endl;
 
 	FallenGod.pickUpItem("Steel Sword");
 	cout << endl;
 	FallenGod.showInventory();
 	cout << endl;
-	scene.getActors();
 
 	return 0;
 }
