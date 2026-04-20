@@ -37,7 +37,7 @@ public:
     // Повинен створити порожній масив
     SmartArray()
     {
-        data = new T[0];
+        data = nullptr;
         size = 0;
         capacity = 0;
 		objectCount++;
@@ -120,6 +120,7 @@ public:
                 data[i] = other.data[i];
 			}
         }
+        return *this;
     }
 
     // Move-оператор присвоювання
@@ -136,6 +137,7 @@ public:
             other.size = 0;
             other.capacity = 0;
         }
+        return *this;
     }
 
     // =========================
@@ -289,7 +291,7 @@ public:
                 ResizeInternal(capacity * 2);
             }
         }
-        data[size++] = move(value);
+        data[size++] = std::move(value);
     }
 
     // Видаляє останній елемент масиву
@@ -305,7 +307,7 @@ public:
     // Повинен зсунути інші елементи вправо
     void Insert(size_t index, const T& value)
     {
-        if (index > size || index < size)
+        if (index > size)
         {
             return;
         }
@@ -326,7 +328,7 @@ public:
     // Повинен зсунути інші елементи вліво
     void RemoveAt(size_t index)
     {
-        if (index > size || index < size)
+        if (index >= size)
         {
             return;
         }
@@ -351,20 +353,17 @@ public:
     // Обмінює вміст двох масивів
     void Swap(SmartArray& other)
     {
-        T* temp = new T[other.capacity];
-        size_t tempSize = other.size;
-		size_t tempCapacity = other.capacity;
-        for (int i = 0; i < tempSize; i++)
-        {
-            temp[i] = other.data[i];
-        }
-        delete[] other.data;
-        other.data = data;
-		other.size = size;
-        other.capacity = capacity;
-        data = temp;
-		size = tempSize;
-		capacity = tempCapacity;
+        T* tempData = data;
+        data = other.data;
+        other.data = tempData;
+
+        size_t tempSize = size;
+        size = other.size;
+        other.size = tempSize;
+
+        size_t tempCapacity = capacity;
+        capacity = other.capacity;
+        other.capacity = tempCapacity;
     }
 
     // Заповнює всі елементи заданим значенням
