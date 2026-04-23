@@ -20,7 +20,7 @@ private:
         T* newData = new T[newCapacity];
         for (size_t i = 0; i < size; ++i)
         {
-            newData[i] = data[i];
+            newData[i] = std::move(data[i]);
         }
         delete[] data;
         data = newData;
@@ -157,27 +157,35 @@ public:
     }
 
     // Повертає перший елемент масиву
-    T& Front()
+    T* Front()
     {
-        return data[0];
+        if (size == 0) return nullptr;   // Я сподіваюсь, що це те, що ви просили
+
+        return &data[0];
     }
 
     // Повертає останній елемент масиву
-    T& Back()
+    T* Back()
     {
-        return data[size - 1];
+        if (size == 0) return nullptr;
+
+        return &data[size - 1];
     }
 
     // Константна версія Front
-    const T& Front() const
+    const T* Front() const
     {
-		return data[0];
+        if (size == 0) return nullptr;
+
+		return &data[0];
     }
 
     // Константна версія Back
-    const T& Back() const
+    const T* Back() const
     {
-		return data[size - 1];
+        if (size == 0) return nullptr;
+
+		return &data[size - 1];
     }
 
     // Повертає сирий вказівник на масив
@@ -653,13 +661,84 @@ public:
 
 		return in;
     }
+
+    template<typename Func>
+    void For_Each(Func func)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            func(data[i]);
+        }
+    }
+
+    template<typename Predicate>
+    void Sort(Predicate pred)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            for (int j = 0; j < size - 1; j++)
+            {
+                if (pred(data[j], data[j + 1]))
+                {
+					T temp = std::move(data[j]);
+                    data[j] = std::move(data[j + 1]);
+					data[j + 1] = std::move(temp);
+                }
+            }
+        }
+    }
+
+    template<typename Predicate>
+    size_t CountIf(Predicate pred) const
+    {
+        size_t count = 0;
+
+        for (int i = 0; i < size; i++)
+        {
+            if (pred(data[i]))
+            {
+                count++;
+            }
+		}
+
+		return count;
+    }
+
+    template<typename Predicate>
+    T* FindIf(Predicate pred)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            if (pred(data[i]))
+            {
+                return &data[i];
+            }
+        }
+
+        return nullptr;
+    }
+
+    template<typename Predicate>
+    void RemoveIf(Predicate pred)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            if (pred(data[i]))
+            {
+                RemoveAt(i);
+                i--;
+			}
+        }
+    }
 };
 
+template<typename T>
+size_t SmartArray<T>::objectCount = 0;
 
 
 int main()
 {
-
+    
 
 
 	return 0;
