@@ -24,6 +24,7 @@ public:
 class Scene
 {
     std::vector<Actor*> actors;
+	std::vector<Actor*> actorsToAdd;
 
 public:
     void AddActor(Actor* actor)
@@ -47,9 +48,21 @@ public:
         {
             actor->Tick();
         }
+
+        for (Actor* actor : actorsToAdd)
+        {
+			actors.push_back(actor);
+		}
+
+		actorsToAdd.clear();
     }
 
     void Print();
+
+    void SpawnActor(Actor* actor)
+    {
+        actorsToAdd.push_back(actor);
+	}
 };
 
 class Field : public Actor
@@ -98,24 +111,65 @@ protected:
     int hunger;
     int max_hunger;
     bool isAlive = true;
+    int reproduction_cooldown = 0;
+	int reproduction_timer = 0;
 
 public:
     bool IsAlive() const { return isAlive; }
 
-    Animal(Scene* scene, const int hunger, const int max_hunger) : Actor(scene)
+    void Kill()
+    {
+		isAlive = false;
+    }
+
+	virtual bool isSameType(Animal* other) = 0;
+	virtual Animal* Reproduce() = 0;
+
+    Animal(Scene* scene, const int hunger, const int max_hunger, const int reproduction_cooldown) : Actor(scene)
     {
         this->hunger = hunger;
         this->max_hunger = max_hunger;
+        this->reproduction_cooldown = reproduction_cooldown;
     }
+
+    void TryToReproduce()
+    {
+        if (!isAlive) return;
+
+        reproduction_timer++;
+
+		if (reproduction_timer < reproduction_cooldown) return;
+
+        for (Actor* actor : GetScene()->GetActors())
+        {
+            Animal* other = dynamic_cast<Animal*>(actor);
+
+            if (other == nullptr) continue;
+			if (other == this) continue;
+			if (!other->IsAlive()) continue;
+
+            if (isSameType(other))
+            {
+				GetScene()->SpawnActor(Reproduce());
+                reproduction_timer = 0;
+				break;
+            }
+        }
+	}
 
     void Tick() override
     {
+		if (!isAlive) return;
+
         --hunger;
 
         if (hunger <= 0)
         {
             isAlive = false;
+            return;
         }
+
+		TryToReproduce();
     }
 
     void Print() override
@@ -132,13 +186,15 @@ public:
 class Rabbit : public Animal
 {
 public:
-    Rabbit(Scene* scene, const int hunger, const int max_hunger) : Animal(scene, hunger, max_hunger) {}
+    Rabbit(Scene* scene, const int hunger, const int max_hunger) : Animal(scene, hunger, max_hunger, 4) {}
 
     void Tick() override
     {
         Animal::Tick();
 
-        int need_huger = max_hunger - hunger;
+		if (!IsAlive()) return;
+
+        int need_hunger = max_hunger - hunger;
 
         for (Actor* actor : GetScene()->GetActors())
         {
@@ -146,20 +202,76 @@ public:
 
             if (field == nullptr) continue;
 
-            int gathered = field->GatherGrass(need_huger);
+            int gathered = field->GatherGrass(need_hunger);
             Eat(gathered);
 
-            need_huger -= gathered;
+            need_hunger -= gathered;
 
-            if (need_huger <= 0) break;
+            if (need_hunger <= 0) break;
         }
     }
+
+    bool isSameType(Animal* other) override
+    {
+        return dynamic_cast<Rabbit*>(other) != nullptr; //
+	}
+
+    Animal* Reproduce() override
+    {
+        const int max_hunger = std::rand() % 10 + 5;
+		Rabbit* baby = new Rabbit(GetScene(), max_hunger, max_hunger);
+		return baby;
+	}
+};
+
+class Fox : public Animal
+{
+
+public:
+
+    Fox(Scene* scene, const int hunger, const int max_hunger) : Animal(scene, hunger, max_hunger, 6) {}
+
+    void Tick() override
+    {
+        Animal::Tick();
+
+        if (!IsAlive()) return;
+
+        int need_hunger = max_hunger - hunger;
+
+        if (need_hunger <= 0) return;
+
+        for (Actor* actor : GetScene()->GetActors())
+        {
+            Rabbit* rabbit = dynamic_cast<Rabbit*>(actor);
+			if (rabbit == nullptr) continue;
+            if (!rabbit->IsAlive()) continue;
+
+			rabbit->Kill();
+            Eat(need_hunger);
+
+            break;
+        }
+    }
+
+    bool isSameType(Animal* other) override
+    {
+        return dynamic_cast<Fox*>(other) != nullptr;
+	}
+
+    Animal* Reproduce() override
+    {
+        const int max_hunger = std::rand() % 10 + 5;
+        Fox* baby = new Fox(GetScene(), max_hunger, max_hunger);
+        return baby;
+	}
 };
 
 void Scene::Print()
 {
     int cout_grass = 0;
     int cout_rabbits = 0;
+	int cout_foxes = 0;
 
     for (Actor* actor : actors)
     {
@@ -174,9 +286,16 @@ void Scene::Print()
                 cout_rabbits++;
             }
         }
+        else if (Fox* fox = dynamic_cast<Fox*>(actor))
+        {
+            if (fox->IsAlive())
+            {
+                cout_foxes++;
+            }
+		}
     }
 
-    std::cout << "Grass: " << cout_grass << '\n' << "Rabbits: " << cout_rabbits << '\n';
+    std::cout << "Grass: " << cout_grass << '\n' << "Rabbits: " << cout_rabbits << '\n' << "Foxes: " << cout_foxes << '\n';
 }
 
 int main()
@@ -209,6 +328,17 @@ int main()
         rabbits.push_back(new Rabbit(scene, max_hunger, max_hunger));
     }
 
+    // === Fields Actors ===
+
+    std::vector<Fox*> foxes;
+
+    foxes.reserve(4);
+    for (size_t i = 0; i < 4; i++)
+    {
+        const int max_hunger = std::rand() % 12 + 8;
+        foxes.push_back(new Fox(scene, max_hunger, max_hunger));
+    }
+
     // =======
 
     for (Actor* actor : fields)
@@ -217,6 +347,11 @@ int main()
     }
 
     for (Actor* actor : rabbits)
+    {
+        scene->AddActor(actor);
+    }
+
+    for (Actor* actor : foxes)
     {
         scene->AddActor(actor);
     }
