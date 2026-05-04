@@ -1,4 +1,7 @@
 ﻿#include <iostream>
+#include <algorithm>
+#include <chrono>
+#include <cstdlib>
 #include <string>
 #include <thread>
 #include <vector>
@@ -8,8 +11,12 @@ class Scene;
 class Actor
 {
     Scene* scene;
+    bool isPendingDestroy = false;
 
 public:
+    bool IsPendingDestroy() const { return isPendingDestroy; }
+    void SetPendingDestroy(bool value) { isPendingDestroy = value; }
+
     Scene* GetScene() const { return scene; }
 
     Actor(Scene* scene)
@@ -17,37 +24,86 @@ public:
         this->scene = scene;
     }
 
+    void DestroyActor()
+    {
+        isPendingDestroy = true;
+    }
+
     virtual void Tick() = 0;
     virtual void Print() = 0;
+
+    virtual ~Actor() = default;
 };
 
 class Scene
 {
     std::vector<Actor*> actors;
 	std::vector<Actor*> actorsToAdd;
+    int tick = 0;
+    int cleaningRate = 60;
+    bool isTicking = false;
 
 public:
+    template <typename T, typename... Args>
+    T* SpawnActor(Args... args)
+    {
+        T* actor = new T(this, args...);
+
+        if (isTicking)
+        {
+            actorsToAdd.push_back(actor);
+        }
+        else
+        {
+            actors.push_back(actor);
+        }
+
+        return actor;
+    }
+
     void AddActor(Actor* actor)
     {
         actors.push_back(actor);
     }
 
-    void RemoveActor(Actor* actor)
+    const std::vector<Actor*>& GetActors() const { return actors; }
+
+    void DespawnActor(Actor* actor)
+    {
+        actor->DestroyActor();
+    }
+
+    void ClearPendingDestroy()
     {
         actors.erase(
-            std::remove(actors.begin(), actors.end(), actor),
+            std::remove_if(actors.begin(), actors.end(), [](Actor* actor)
+            {
+                if (actor->IsPendingDestroy())
+                {
+                    delete actor;
+                    return true;
+                }
+
+                return false;
+            }),
             actors.end()
         );
     }
 
-    const std::vector<Actor*>& GetActors() const { return actors; }
-
     void Tick()
     {
+        tick++;
+        isTicking = true;
+
         for (Actor* actor : actors)
         {
-            actor->Tick();
+            if (!actor->IsPendingDestroy())
+            {
+                actor->Tick();
+            }
         }
+
+        isTicking = false;
 
         for (Actor* actor : actorsToAdd)
         {
@@ -55,13 +111,26 @@ public:
 		}
 
 		actorsToAdd.clear();
+
+        if (tick % cleaningRate == 0)
+        {
+            ClearPendingDestroy();
+        }
     }
 
     void Print();
 
-    void SpawnActor(Actor* actor)
+    ~Scene()
     {
-        actorsToAdd.push_back(actor);
+        for (Actor* actor : actors)
+        {
+            delete actor;
+        }
+
+        for (Actor* actor : actorsToAdd)
+        {
+            delete actor;
+        }
 	}
 };
 
@@ -120,6 +189,7 @@ public:
     void Kill()
     {
 		isAlive = false;
+        GetScene()->DespawnActor(this);
     }
 
 	virtual bool isSameType(Animal* other) = 0;
@@ -150,7 +220,7 @@ public:
 
             if (isSameType(other))
             {
-				GetScene()->SpawnActor(Reproduce());
+				Reproduce();
                 reproduction_timer = 0;
 				break;
             }
@@ -165,7 +235,7 @@ public:
 
         if (hunger <= 0)
         {
-            isAlive = false;
+            Kill();
             return;
         }
 
@@ -219,8 +289,7 @@ public:
     Animal* Reproduce() override
     {
         const int max_hunger = std::rand() % 10 + 5;
-		Rabbit* baby = new Rabbit(GetScene(), max_hunger, max_hunger);
-		return baby;
+		return GetScene()->SpawnActor<Rabbit>(max_hunger, max_hunger);
 	}
 };
 
@@ -262,8 +331,7 @@ public:
     Animal* Reproduce() override
     {
         const int max_hunger = std::rand() % 10 + 5;
-        Fox* baby = new Fox(GetScene(), max_hunger, max_hunger);
-        return baby;
+        return GetScene()->SpawnActor<Fox>(max_hunger, max_hunger);
 	}
 };
 
@@ -281,14 +349,14 @@ void Scene::Print()
         }
         else if (Rabbit* rabbit = dynamic_cast<Rabbit*>(actor))
         {
-            if (rabbit->IsAlive())
+            if (rabbit->IsAlive() && !rabbit->IsPendingDestroy())
             {
                 cout_rabbits++;
             }
         }
         else if (Fox* fox = dynamic_cast<Fox*>(actor))
         {
-            if (fox->IsAlive())
+            if (fox->IsAlive() && !fox->IsPendingDestroy())
             {
                 cout_foxes++;
             }
@@ -304,56 +372,29 @@ int main()
 
     // === Fields Actors ===
 
-    std::vector<Field*> fields;
-
-    fields.reserve(5);
     for (size_t i = 0; i < 5; i++)
     {
-        fields.push_back(new Field(
-            scene,
+        scene->SpawnActor<Field>(
             std::rand() % 20 + 1,
             std::rand() % 20 + 1,
             std::rand() % 3 + 1
-        ));
+        );
     }
 
     // === Fields Actors ===
 
-    std::vector<Rabbit*> rabbits;
-
-    rabbits.reserve(15);
     for (size_t i = 0; i < 15; i++)
     {
         const int max_hunger = std::rand() % 10 + 5;
-        rabbits.push_back(new Rabbit(scene, max_hunger, max_hunger));
+        scene->SpawnActor<Rabbit>(max_hunger, max_hunger);
     }
 
     // === Fields Actors ===
 
-    std::vector<Fox*> foxes;
-
-    foxes.reserve(4);
     for (size_t i = 0; i < 4; i++)
     {
         const int max_hunger = std::rand() % 12 + 8;
-        foxes.push_back(new Fox(scene, max_hunger, max_hunger));
-    }
-
-    // =======
-
-    for (Actor* actor : fields)
-    {
-        scene->AddActor(actor);
-    }
-
-    for (Actor* actor : rabbits)
-    {
-        scene->AddActor(actor);
-    }
-
-    for (Actor* actor : foxes)
-    {
-        scene->AddActor(actor);
+        scene->SpawnActor<Fox>(max_hunger, max_hunger);
     }
 
     // ======
