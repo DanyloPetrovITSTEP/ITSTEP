@@ -7,16 +7,25 @@
 using namespace std;
 
 template <typename... Args>
-class Event
+class event
 {
-    using Handler = function<void(Args...)>;
+    using handler = function<void(Args...)>;
 
-    vector<Handler> handlers;
+    vector<handler> handlers_;
 
 public:
-    void Subscribe(Handler handler)
+	template <typename T>
+    void subscribe(shared_ptr<T> owner, handler handler)
     {
-        handlers.push_back(std::move(handler));
+        weak_ptr<T> weak_owner = owner;
+
+        handlers_.push_back([weak_owner, handler](Args... args)
+        {
+            if (auto locked = weak_owner.lock())
+            {
+                    handler(args...);
+			}
+        });
     }
 
 
@@ -45,8 +54,8 @@ class Warrior
     }
 
 public:
-    Event<bool> aliveChanged;
-    Event<int> healthChanged;
+    event<bool> aliveChanged;
+    event<int> healthChanged;
 
     void setHealth(int health)
     {
@@ -75,7 +84,7 @@ public:
             };
 
         updateAlive(health);
-        healthChanged.Subscribe(updateAlive);
+        healthChanged.subscribe(make_shared(this), updateAlive);
     }
 
     void Damage(int value)
