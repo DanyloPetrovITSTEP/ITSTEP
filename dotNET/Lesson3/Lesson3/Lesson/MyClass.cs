@@ -10,17 +10,17 @@ struct AttributeBonus
 {
     public string Tag;
     public AttributeBonusType Type;
-    public int Value;
+    public double Value;
 }
 
 
-public class Attribute(int baseValue)
+public class myAttribute(int baseValue)  // доречі, Attribute не дає використовувати, скаржиться що вже існує System.Attribute, тож довелося змінити назву
 {
-    public int Value
+    public double Value
     {
         get
         {
-            int result = BaseValue;
+            double result = BaseValue;
 
             foreach (var bonus in Bonuses)
             {
@@ -28,11 +28,16 @@ public class Attribute(int baseValue)
                 {
                     result += bonus.Value;
                 }
-                else if (bonus.Type == AttributeBonusType.Multiply)
+            }
+
+            foreach (var bonus in Bonuses)
+            {
+                if (bonus.Type == AttributeBonusType.Multiply)
                 {
                     result *= bonus.Value;
                 }
             }
+            
 
             if (MinValue != null && result < MinValue.Value)
             {
@@ -55,7 +60,7 @@ public class Attribute(int baseValue)
     public int? MinValue { get; set; }
     public int? MaxValue { get; set; }
 
-    public void AddBonus(string tag, int value, AttributeBonusType type = AttributeBonusType.Add)
+    public void AddBonus(string tag, double value, AttributeBonusType type = AttributeBonusType.Add)
     {
         Bonuses.Add(new AttributeBonus { Tag = tag, Value = value, Type = type });
     }
@@ -72,8 +77,8 @@ public class Attribute(int baseValue)
 
 public class Character(int health, int damage)
 {
-    public Attribute Health { get; private set; } = new(health) { MinValue = 0, MaxValue = health };
-    public Attribute Damage { get; private set; } = new(damage);
+    public myAttribute Health { get; private set; } = new(health) { MinValue = 0, MaxValue = health };
+    public myAttribute Damage { get; private set; } = new(damage);
 
     public override string ToString()
     {
